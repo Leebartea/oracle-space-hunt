@@ -280,7 +280,7 @@
       schedulerNode.className = `status-pill ${status.secured ? "good" : ""}`;
 
       document.getElementById("attempt-count").textContent = formatValue(status.attempt_count);
-      document.getElementById("next-run").textContent = computeNextRun(status.schedule_minutes || [7, 37]);
+      document.getElementById("next-run").textContent = status.secured ? "Stopped after success" : computeNextRun(status.schedule_minutes || [7, 37]);
       document.getElementById("last-result").textContent = formatValue(status.last_result);
       document.getElementById("last-target").textContent = `${formatValue(status.last_target_label, "primary")} · ${formatValue(status.last_target_ocpus)} / ${formatValue(status.last_target_memory_in_gbs)} GB`;
       document.getElementById("capacity-status").textContent = formatValue(status.last_capacity_status);

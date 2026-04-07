@@ -26,6 +26,7 @@ That means:
 - the schedule runs online, not on your machine
 - your Mac can sleep or be offline
 - the Oracle VM, once created, persists in Oracle normally
+- once capacity is secured, future scheduled GitHub runs exit early without doing fresh Oracle checks
 
 ## Security Model
 
