@@ -69,6 +69,7 @@ After adding secrets, you can trigger the workflow manually from the Actions tab
 - Repo: `https://github.com/Leebartea/oracle-space-hunt`
 - Actions UI: `https://github.com/Leebartea/oracle-space-hunt/actions`
 - Workflow page: `https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml`
+- Hosted dashboard: `https://leebartea.github.io/oracle-space-hunt/`
 - Latest successful validation run: `https://github.com/Leebartea/oracle-space-hunt/actions/runs/24071571530`
 
 If you are using the GitHub-hosted hunter, you do **not** need to keep the local Mac scheduler running. The GitHub workflow is the active Oracle hunter.

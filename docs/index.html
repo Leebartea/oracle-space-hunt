@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oracle Space Hunt</title>
+  <style>
+    :root {
+      --bg: #f5efe4;
+      --card: rgba(255,255,255,0.9);
+      --ink: #182027;
+      --muted: #5d6a72;
+      --line: #d7cfbf;
+      --accent: #2f6fed;
+      --good: #1f8b4c;
+      --warn: #9b5f00;
+      --bad: #b33030;
+      --shadow: 0 18px 40px rgba(24,32,39,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(47,111,237,0.12), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(155,95,0,0.10), transparent 30%),
+        linear-gradient(180deg, #f8f4ea 0%, var(--bg) 100%);
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .shell {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+    .hero, .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+    }
+    .hero { padding: 22px 24px; }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      line-height: 1.05;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 760px;
+    }
+    .hero-links {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .hero-links a, .link-button {
+      text-decoration: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: rgba(47,111,237,0.10);
+      color: var(--accent);
+      font-weight: 600;
+      border: 1px solid rgba(47,111,237,0.18);
+    }
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1.15fr 0.85fr;
+    }
+    .card { padding: 18px; }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 13px;
+      background: rgba(47,111,237,0.10);
+      color: var(--accent);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.72);
+    }
+    .label {
+      font-size: 12px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .value {
+      font-size: 18px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .detail-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px dashed var(--line);
+      padding-bottom: 8px;
+    }
+    .detail-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+    pre {
+      margin: 0;
+      padding: 12px;
+      background: #151c22;
+      color: #e2edf5;
+      border-radius: 14px;
+      max-height: 360px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .note {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(47,111,237,0.07);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .good { color: var(--good); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+    @media (max-width: 900px) {
+      .grid, .stats { grid-template-columns: 1fr; }
+      .detail-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <h1>Oracle Space Hunt</h1>
+      <p>This hosted dashboard mirrors the Oracle A1 space hunter running on GitHub Actions. It shows the latest attempt, current target profile, and the most recent Oracle capacity outcome without depending on your Mac staying awake.</p>
+      <div class="hero-links">
+        <a id="repo-link" href="https://github.com/Leebartea/oracle-space-hunt" target="_blank" rel="noreferrer">Open Repo</a>
+        <a id="workflow-link" href="https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml" target="_blank" rel="noreferrer">Open Workflow</a>
+        <a id="run-link" href="https://github.com/Leebartea/oracle-space-hunt/actions" target="_blank" rel="noreferrer">Latest Run</a>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <div class="section-title">
+          <h2>Live Status</h2>
+          <span class="status-pill" id="scheduler-pill">Loading…</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="label">Attempts</div><div class="value" id="attempt-count">-</div></div>
+          <div class="stat"><div class="label">Next Run</div><div class="value" id="next-run">-</div></div>
+          <div class="stat"><div class="label">Last Result</div><div class="value" id="last-result">-</div></div>
+          <div class="stat"><div class="label">Last Target</div><div class="value" id="last-target">-</div></div>
+          <div class="stat"><div class="label">Capacity Status</div><div class="value" id="capacity-status">-</div></div>
+          <div class="stat"><div class="label">Secured</div><div class="value" id="secured-status">-</div></div>
+        </div>
+        <div class="note" id="detail-line">Loading current hunt state…</div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>Capacity Targets</h2>
+        </div>
+        <div class="detail-list">
+          <div class="detail-row"><span class="muted">Primary</span><strong id="primary-target">-</strong></div>
+          <div class="detail-row"><span class="muted">Fallback</span><strong id="fallback-target">-</strong></div>
+          <div class="detail-row"><span class="muted">Schedule</span><strong id="schedule-label">-</strong></div>
+          <div class="detail-row"><span class="muted">Last Run</span><strong id="last-run-finished">-</strong></div>
+          <div class="detail-row"><span class="muted">Run Source</span><strong>GitHub Actions</strong></div>
+        </div>
+        <div class="note">This page refreshes automatically. Times are rendered in your browser’s local timezone for readability.</div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>Recent Log</h2>
+      </div>
+      <pre id="log-box">Loading…</pre>
+    </section>
+  </div>
+
+  <script>
+    function formatValue(value, fallback = "-") {
+      return value === null || value === undefined || value === "" ? fallback : String(value);
+    }
+
+    function formatDate(value) {
+      if (!value) return "Stopped";
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return value;
+      return parsed.toLocaleString();
+    }
+
+    function computeNextRun(scheduleMinutes) {
+      if (!Array.isArray(scheduleMinutes) || scheduleMinutes.length === 0) return "Unknown";
+      const now = new Date();
+      const next = new Date(now.getTime());
+      next.setSeconds(0, 0);
+      const minutes = [...scheduleMinutes].sort((a, b) => a - b);
+      const currentMinute = now.getMinutes();
+      const nextMinute = minutes.find((minute) => minute > currentMinute);
+      if (nextMinute !== undefined) {
+        next.setMinutes(nextMinute);
+      } else {
+        next.setHours(next.getHours() + 1, minutes[0], 0, 0);
+      }
+      return next.toLocaleString();
+    }
+
+    async function loadStatus() {
+      const response = await fetch(`./status.json?ts=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Failed to load status.json (${response.status})`);
+      return response.json();
+    }
+
+    function render(status) {
+      const schedulerNode = document.getElementById("scheduler-pill");
+      schedulerNode.textContent = status.secured ? "Capacity secured" : "Hosted hunter active";
+      schedulerNode.className = `status-pill ${status.secured ? "good" : ""}`;
+
+      document.getElementById("attempt-count").textContent = formatValue(status.attempt_count);
+      document.getElementById("next-run").textContent = computeNextRun(status.schedule_minutes || [7, 37]);
+      document.getElementById("last-result").textContent = formatValue(status.last_result);
+      document.getElementById("last-target").textContent = `${formatValue(status.last_target_label, "primary")} · ${formatValue(status.last_target_ocpus)} / ${formatValue(status.last_target_memory_in_gbs)} GB`;
+      document.getElementById("capacity-status").textContent = formatValue(status.last_capacity_status);
+      document.getElementById("secured-status").textContent = status.secured ? `Yes (${formatValue(status.secured_lifecycle, "accepted")})` : "No";
+      document.getElementById("detail-line").textContent = formatValue(status.last_message, "No status message yet.");
+
+      document.getElementById("primary-target").textContent = `${formatValue(status.primary_ocpus)} OCPU / ${formatValue(status.primary_memory_in_gbs)} GB`;
+      document.getElementById("fallback-target").textContent = status.fallback_enabled
+        ? `${formatValue(status.fallback_ocpus)} OCPU / ${formatValue(status.fallback_memory_in_gbs)} GB`
+        : "Disabled";
+      document.getElementById("schedule-label").textContent = `Every hour at :${(status.schedule_minutes || [7, 37]).join(" and :")}`;
+      document.getElementById("last-run-finished").textContent = formatDate(status.last_finished_at);
+
+      document.getElementById("repo-link").href = formatValue(status.repo_url, "https://github.com/Leebartea/oracle-space-hunt");
+      document.getElementById("workflow-link").href = formatValue(status.workflow_url, "https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml");
+      document.getElementById("run-link").href = formatValue(status.run_url, "https://github.com/Leebartea/oracle-space-hunt/actions");
+
+      document.getElementById("log-box").textContent = (status.log_tail || []).join("\n") || "No log lines yet.";
+    }
+
+    async function refresh() {
+      try {
+        const status = await loadStatus();
+        render(status);
+      } catch (error) {
+        document.getElementById("scheduler-pill").textContent = "Status unavailable";
+        document.getElementById("detail-line").textContent = error.message || String(error);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 30000);
+  </script>
+</body>
+</html>
