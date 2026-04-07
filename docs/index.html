@@ -276,11 +276,16 @@
 
     function render(status) {
       const schedulerNode = document.getElementById("scheduler-pill");
-      schedulerNode.textContent = status.secured ? "Capacity secured" : "Hosted hunter active";
-      schedulerNode.className = `status-pill ${status.secured ? "good" : ""}`;
+      if (status.guarded_after_success) {
+        schedulerNode.textContent = "Guarded after success";
+        schedulerNode.className = "status-pill good";
+      } else {
+        schedulerNode.textContent = status.secured ? "Capacity secured" : "Hosted hunter active";
+        schedulerNode.className = `status-pill ${status.secured ? "good" : ""}`;
+      }
 
       document.getElementById("attempt-count").textContent = formatValue(status.attempt_count);
-      document.getElementById("next-run").textContent = status.secured ? "Stopped after success" : computeNextRun(status.schedule_minutes || [7, 37]);
+      document.getElementById("next-run").textContent = status.secured ? "Stopped after success" : computeNextRun(status.schedule_minutes || [7, 22, 37, 52]);
       document.getElementById("last-result").textContent = formatValue(status.last_result);
       document.getElementById("last-target").textContent = `${formatValue(status.last_target_label, "primary")} · ${formatValue(status.last_target_ocpus)} / ${formatValue(status.last_target_memory_in_gbs)} GB`;
       document.getElementById("capacity-status").textContent = formatValue(status.last_capacity_status);
@@ -292,7 +297,7 @@
         ? `${formatValue(status.fallback_ocpus)} OCPU / ${formatValue(status.fallback_memory_in_gbs)} GB${status.fallback_enabled ? "" : " (manual only)"}`
         : "Unavailable";
       document.getElementById("selected-profile").textContent = formatValue(status.selected_profile, "primary");
-      document.getElementById("schedule-label").textContent = `At minute :${(status.schedule_minutes || [7, 37]).join(" and :")} of every hour`;
+      document.getElementById("schedule-label").textContent = `At minute :${(status.schedule_minutes || [7, 22, 37, 52]).join(", :")} of every hour`;
       document.getElementById("last-run-finished").textContent = formatDate(status.last_finished_at);
       document.getElementById("schedule-note").textContent = status.schedule_note || "This page refreshes automatically. Times are rendered in your browser’s local timezone for readability.";
 

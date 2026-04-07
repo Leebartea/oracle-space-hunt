@@ -12,7 +12,7 @@ on:
           - primary
           - fallback
   schedule:
-    - cron: "7,37 * * * *"
+    - cron: "7,22,37,52 * * * *"
 
 permissions:
   contents: read
@@ -193,7 +193,7 @@ jobs:
               echo "- Result: \`${{ steps.hunt.outputs.status || 'unknown' }}\`"
               echo "- Exit code: \`${{ steps.hunt.outputs.exit_code || 'n/a' }}\`"
             fi
-            echo "- Schedule: \`7,37 * * * *\`"
+            echo "- Schedule: \`7,22,37,52 * * * *\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build hosted dashboard payload
@@ -246,11 +246,12 @@ jobs:
                   "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
                   "attempt_count": int(preserved_attempts) if preserved_attempts is not None else int(os.environ["GITHUB_RUN_NUMBER"]),
                   "selected_profile": previous.get("selected_profile", "primary"),
+                  "guarded_after_success": True,
                   "last_result": previous.get("last_result", "secured_or_already_exists"),
                   "last_message": "Capacity was already secured previously, so this scheduled run exited early without checking Oracle again.",
                   "last_exit_code": previous.get("last_exit_code", 0),
-                  "schedule_minutes": [7, 37],
-                  "schedule_note": "Capacity was already secured previously, so scheduled GitHub runs now exit early before checking Oracle again. GitHub scheduled workflows are still best-effort, so the wake-up itself may drift.",
+                  "schedule_minutes": [7, 22, 37, 52],
+                  "schedule_note": "Capacity was already secured previously, so scheduled GitHub runs now exit early before checking Oracle again. The hunter targets minute :07, :22, :37 and :52 of every hour, but GitHub scheduled workflows are still best-effort, so the wake-up itself may drift.",
                   "log_tail": (previous.get("log_tail") or [])[-15:] + ["[oracle-retry] Capacity already secured previously; skipped new Oracle check on this run."],
                   "secured": True,
               }
@@ -262,6 +263,7 @@ jobs:
                   "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
                   "attempt_count": int(os.environ["GITHUB_RUN_NUMBER"]),
                   "selected_profile": (config.get("launch") or {}).get("metadata", {}).get("selected_profile", "primary"),
+                  "guarded_after_success": False,
                   "last_result": state.get("last_result") or os.environ.get("HUNT_STATUS", "unknown"),
                   "last_message": state.get("last_message"),
                   "last_exit_code": state.get("last_exit_code") or os.environ.get("HUNT_EXIT_CODE"),
@@ -282,8 +284,8 @@ jobs:
                   "fallback_enabled": bool((config.get("retry") or {}).get("fallback", {}).get("enabled")),
                   "fallback_ocpus": (config.get("retry") or {}).get("fallback", {}).get("ocpus") or 1,
                   "fallback_memory_in_gbs": (config.get("retry") or {}).get("fallback", {}).get("memory_in_gbs") or 6,
-                  "schedule_minutes": [7, 37],
-                  "schedule_note": "GitHub-hosted hunter targets minute :07 and :37 of every hour. GitHub scheduled workflows are best-effort, so runs can be delayed a few minutes or occasionally dropped. The next run shown here is the next expected slot, not a guarantee. The dashboard is monitor-only, but the workflow page can trigger a one-off fallback run.",
+                  "schedule_minutes": [7, 22, 37, 52],
+                  "schedule_note": "GitHub-hosted hunter targets minute :07, :22, :37 and :52 of every hour. GitHub scheduled workflows are best-effort, so runs can be delayed a few minutes or occasionally dropped. The next run shown here is the next expected slot, not a guarantee. The dashboard is monitor-only, but the workflow page can trigger a one-off fallback run.",
                   "log_tail": Path("oracle_retry.log").read_text().splitlines()[-16:] if Path("oracle_retry.log").exists() else [],
               }
           Path("site/status.json").write_text(json.dumps(payload, indent=2) + "\n")
