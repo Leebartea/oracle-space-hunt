@@ -207,8 +207,9 @@
           <div class="detail-row"><span class="muted">Schedule</span><strong id="schedule-label">-</strong></div>
           <div class="detail-row"><span class="muted">Last Run</span><strong id="last-run-finished">-</strong></div>
           <div class="detail-row"><span class="muted">Run Source</span><strong>GitHub Actions</strong></div>
+          <div class="detail-row"><span class="muted">Control Mode</span><strong>Monitor-only</strong></div>
         </div>
-        <div class="note">This page refreshes automatically. Times are rendered in your browser’s local timezone for readability.</div>
+        <div class="note" id="schedule-note">This page refreshes automatically. Times are rendered in your browser’s local timezone for readability.</div>
       </section>
     </div>
 
@@ -273,6 +274,7 @@
         : "Disabled";
       document.getElementById("schedule-label").textContent = `Every hour at :${(status.schedule_minutes || [7, 37]).join(" and :")}`;
       document.getElementById("last-run-finished").textContent = formatDate(status.last_finished_at);
+      document.getElementById("schedule-note").textContent = status.schedule_note || "This page refreshes automatically. Times are rendered in your browser’s local timezone for readability.";
 
       document.getElementById("repo-link").href = formatValue(status.repo_url, "https://github.com/Leebartea/oracle-space-hunt");
       document.getElementById("workflow-link").href = formatValue(status.workflow_url, "https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml");

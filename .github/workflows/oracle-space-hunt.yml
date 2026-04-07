@@ -142,7 +142,18 @@ jobs:
           python - <<'PY'
           import json
           import os
+          from datetime import datetime, UTC
           from pathlib import Path
+
+          def to_utc_iso(value):
+              if not value:
+                  return None
+              text = str(value).strip()
+              try:
+                  dt = datetime.strptime(text, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
+                  return dt.isoformat().replace("+00:00", "Z")
+              except ValueError:
+                  return text
 
           config = json.loads(Path("oracle_space_hunt.local.json").read_text())
           state_path = Path("oracle_retry_state.json")
@@ -162,9 +173,9 @@ jobs:
               "last_target_label": state.get("last_target_label", "primary"),
               "last_target_ocpus": state.get("last_target_ocpus"),
               "last_target_memory_in_gbs": state.get("last_target_memory_in_gbs"),
-              "last_started_at": state.get("last_started_at"),
-              "last_finished_at": state.get("last_finished_at"),
-              "last_success_at": state.get("last_success_at"),
+              "last_started_at": to_utc_iso(state.get("last_started_at")),
+              "last_finished_at": to_utc_iso(state.get("last_finished_at")),
+              "last_success_at": to_utc_iso(state.get("last_success_at")),
               "secured": bool(state.get("secured")),
               "secured_instance_id": state.get("secured_instance_id"),
               "secured_lifecycle": state.get("secured_lifecycle"),
@@ -174,6 +185,7 @@ jobs:
               "fallback_ocpus": (config.get("retry") or {}).get("fallback", {}).get("ocpus"),
               "fallback_memory_in_gbs": (config.get("retry") or {}).get("fallback", {}).get("memory_in_gbs"),
               "schedule_minutes": [7, 37],
+              "schedule_note": "GitHub-hosted hunter schedule at minute 7 and 37 each hour. This dashboard is monitor-only.",
               "log_tail": Path("oracle_retry.log").read_text().splitlines()[-16:] if Path("oracle_retry.log").exists() else [],
           }
           Path("site/status.json").write_text(json.dumps(payload, indent=2) + "\n")
