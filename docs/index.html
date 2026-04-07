@@ -68,6 +68,21 @@
       font-weight: 600;
       border: 1px solid rgba(47,111,237,0.18);
     }
+    .action-row {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .action-row a {
+      text-decoration: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: rgba(47,111,237,0.10);
+      color: var(--accent);
+      font-weight: 600;
+      border: 1px solid rgba(47,111,237,0.18);
+    }
     .grid {
       display: grid;
       gap: 16px;
@@ -210,6 +225,9 @@
           <div class="detail-row"><span class="muted">Run Source</span><strong>GitHub Actions</strong></div>
           <div class="detail-row"><span class="muted">Control Mode</span><strong>Monitor-only</strong></div>
         </div>
+        <div class="action-row">
+          <a id="fallback-run-link" href="https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml" target="_blank" rel="noreferrer">Trigger Fallback</a>
+        </div>
         <div class="note" id="schedule-note">This page refreshes automatically. Times are rendered in your browser’s local timezone for readability.</div>
       </section>
     </div>
@@ -281,6 +299,7 @@
       document.getElementById("repo-link").href = formatValue(status.repo_url, "https://github.com/Leebartea/oracle-space-hunt");
       document.getElementById("workflow-link").href = formatValue(status.workflow_url, "https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml");
       document.getElementById("run-link").href = formatValue(status.run_url, "https://github.com/Leebartea/oracle-space-hunt/actions");
+      document.getElementById("fallback-run-link").href = formatValue(status.workflow_url, "https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml");
 
       document.getElementById("log-box").textContent = (status.log_tail || []).join("\n") || "No log lines yet.";
     }
