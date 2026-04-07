@@ -204,6 +204,7 @@
         <div class="detail-list">
           <div class="detail-row"><span class="muted">Primary</span><strong id="primary-target">-</strong></div>
           <div class="detail-row"><span class="muted">Fallback</span><strong id="fallback-target">-</strong></div>
+          <div class="detail-row"><span class="muted">Current Profile</span><strong id="selected-profile">-</strong></div>
           <div class="detail-row"><span class="muted">Schedule</span><strong id="schedule-label">-</strong></div>
           <div class="detail-row"><span class="muted">Last Run</span><strong id="last-run-finished">-</strong></div>
           <div class="detail-row"><span class="muted">Run Source</span><strong>GitHub Actions</strong></div>
@@ -272,6 +273,7 @@
       document.getElementById("fallback-target").textContent = status.fallback_enabled
         ? `${formatValue(status.fallback_ocpus)} OCPU / ${formatValue(status.fallback_memory_in_gbs)} GB`
         : "Disabled";
+      document.getElementById("selected-profile").textContent = formatValue(status.selected_profile, "primary");
       document.getElementById("schedule-label").textContent = `Every hour at :${(status.schedule_minutes || [7, 37]).join(" and :")}`;
       document.getElementById("last-run-finished").textContent = formatDate(status.last_finished_at);
       document.getElementById("schedule-note").textContent = status.schedule_note || "This page refreshes automatically. Times are rendered in your browser’s local timezone for readability.";

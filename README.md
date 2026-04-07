@@ -63,6 +63,8 @@ After adding secrets, you can trigger the workflow manually from the Actions tab
 
 - `Oracle Space Hunt`
 - `Run workflow`
+- choose `primary` for the normal `2 / 12 GB` hunt
+- choose `fallback` for a one-off `1 / 6 GB` hunt if you want to test the smaller target manually
 
 ## Monitoring Links
 

@@ -2,6 +2,15 @@ name: Oracle Space Hunt
 
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: "Run target profile"
+        required: true
+        default: primary
+        type: choice
+        options:
+          - primary
+          - fallback
   schedule:
     - cron: "7,37 * * * *"
 
@@ -40,6 +49,7 @@ jobs:
           OCI_REGION: ${{ secrets.OCI_REGION }}
           OCI_API_KEY_PEM: ${{ secrets.OCI_API_KEY_PEM }}
           ORACLE_HUNT_CONFIG_JSON: ${{ secrets.ORACLE_HUNT_CONFIG_JSON }}
+          RUN_PROFILE: ${{ github.event.inputs.profile || 'primary' }}
         run: |
           set -euo pipefail
           mkdir -p ~/.oci ~/.ssh
@@ -60,6 +70,7 @@ jobs:
 
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
 
           config_path = Path("oracle_space_hunt.local.json")
@@ -79,6 +90,23 @@ jobs:
           config["artifacts"]["state_file"] = str(Path.cwd() / "oracle_retry_state.json")
           config["artifacts"]["lock_file"] = str(Path.cwd() / "oracle_retry.lock")
 
+          selected_profile = os.environ.get("RUN_PROFILE", "primary").strip().lower()
+          fallback = (config.get("retry") or {}).get("fallback") or {}
+          if selected_profile == "fallback":
+              fallback_ocpus = fallback.get("ocpus")
+              fallback_memory = fallback.get("memory_in_gbs")
+              if not fallback_ocpus or not fallback_memory:
+                  raise SystemExit("Fallback profile was requested, but fallback values are not configured.")
+              config["launch"]["ocpus"] = fallback_ocpus
+              config["launch"]["memory_in_gbs"] = fallback_memory
+              config.setdefault("retry", {})["fallback"] = {
+                  "enabled": False,
+                  "ocpus": fallback_ocpus,
+                  "memory_in_gbs": fallback_memory,
+              }
+              config.setdefault("launch", {}).setdefault("metadata", {})["selected_profile"] = "fallback"
+          else:
+              config.setdefault("launch", {}).setdefault("metadata", {})["selected_profile"] = "primary"
           config_path.write_text(json.dumps(config, indent=2) + "\n")
           PY
 
@@ -87,8 +115,8 @@ jobs:
         shell: bash
         run: |
           set +e
-          python oracle_free_tier_retry_launch.py --config oracle_space_hunt.local.json --once
-          code=$?
+          python oracle_free_tier_retry_launch.py --config oracle_space_hunt.local.json --once 2>&1 | tee oracle_retry.log
+          code=${PIPESTATUS[0]}
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           if [ "$code" -eq 0 ]; then
             echo "status=secured_or_already_exists" >> "$GITHUB_OUTPUT"
@@ -164,6 +192,7 @@ jobs:
               "workflow_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/workflows/oracle-space-hunt.yml",
               "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
               "attempt_count": int(os.environ["GITHUB_RUN_NUMBER"]),
+              "selected_profile": (config.get("launch") or {}).get("metadata", {}).get("selected_profile", "primary"),
               "last_result": state.get("last_result") or os.environ.get("HUNT_STATUS", "unknown"),
               "last_message": state.get("last_message"),
               "last_exit_code": state.get("last_exit_code") or os.environ.get("HUNT_EXIT_CODE"),
@@ -185,7 +214,7 @@ jobs:
               "fallback_ocpus": (config.get("retry") or {}).get("fallback", {}).get("ocpus"),
               "fallback_memory_in_gbs": (config.get("retry") or {}).get("fallback", {}).get("memory_in_gbs"),
               "schedule_minutes": [7, 37],
-              "schedule_note": "GitHub-hosted hunter schedule at minute 7 and 37 each hour. This dashboard is monitor-only.",
+              "schedule_note": "GitHub-hosted hunter schedule at minute 7 and 37 each hour. The dashboard is monitor-only, but the workflow page can trigger a one-off fallback run.",
               "log_tail": Path("oracle_retry.log").read_text().splitlines()[-16:] if Path("oracle_retry.log").exists() else [],
           }
           Path("site/status.json").write_text(json.dumps(payload, indent=2) + "\n")
