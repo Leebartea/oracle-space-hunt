@@ -83,6 +83,12 @@
       font-weight: 600;
       border: 1px solid rgba(47,111,237,0.18);
     }
+    .action-help {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
     .grid {
       display: grid;
       gap: 16px;
@@ -227,6 +233,9 @@
         </div>
         <div class="action-row">
           <a id="fallback-run-link" href="https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml" target="_blank" rel="noreferrer">Trigger Fallback</a>
+        </div>
+        <div class="action-help">
+          Full shutdown: open the workflow page and use <strong>Disable workflow</strong> if you want GitHub to stop waking this hunter entirely after success.
         </div>
         <div class="note" id="schedule-note">This page refreshes automatically. Times are rendered in your browser’s local timezone for readability.</div>
       </section>
