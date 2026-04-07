@@ -1,0 +1,39 @@
+{
+  "tenancy": {
+    "profile": "DEFAULT",
+    "region": "af-johannesburg-1",
+    "availability_domain": "Uocm:AF-JOHANNESBURG-1-AD-1",
+    "root_compartment_id": "ocid1.tenancy.oc1..replace-me"
+  },
+  "launch": {
+    "display_name": "crypto-signal-bot",
+    "target_compartment_id": "ocid1.compartment.oc1..replace-me",
+    "subnet_id": "ocid1.subnet.oc1.af-johannesburg-1.replace-me",
+    "image_id": "ocid1.image.oc1.af-johannesburg-1.replace-me",
+    "shape": "VM.Standard.A1.Flex",
+    "ocpus": 2,
+    "memory_in_gbs": 12,
+    "ssh_authorized_keys_file": "/home/runner/.ssh/oracle_bot_key.pub",
+    "assign_public_ip": true,
+    "boot_volume_size_in_gbs": 50,
+    "hostname_label": "cryptosignalbot",
+    "metadata": {
+      "github_runner_ssh_public_key": "ssh-ed25519 AAAAreplace-me oracle-space-hunt"
+    }
+  },
+  "retry": {
+    "interval_seconds": 1800,
+    "jitter_seconds": 300,
+    "max_attempts": 0,
+    "requested_instance_count": 1,
+    "fallback": {
+      "enabled": false,
+      "ocpus": 1,
+      "memory_in_gbs": 6
+    }
+  },
+  "artifacts": {
+    "log_file": "/absolute/path/to/oracle_retry.log",
+    "state_file": "/absolute/path/to/oracle_retry_state.json"
+  }
+}

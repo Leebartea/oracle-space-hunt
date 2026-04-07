@@ -1,0 +1,14 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Never commit live Oracle credentials or local hunt state
+oracle_space_hunt.local.json
+*.pem
+*.key
+*.log
+oracle_retry_state.json
+oracle_retry.lock
+

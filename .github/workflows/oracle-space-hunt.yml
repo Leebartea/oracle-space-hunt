@@ -1,0 +1,123 @@
+name: Oracle Space Hunt
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7,37 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-space-hunt
+  cancel-in-progress: false
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install OCI CLI
+        run: python -m pip install --disable-pip-version-check oci-cli
+
+      - name: Materialize OCI and hunt config
+        shell: bash
+        env:
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
+          OCI_API_KEY_PEM: ${{ secrets.OCI_API_KEY_PEM }}
+          ORACLE_HUNT_CONFIG_JSON: ${{ secrets.ORACLE_HUNT_CONFIG_JSON }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.oci ~/.ssh
+          printf '%s\n' "$OCI_API_KEY_PEM" > ~/.oci/oracle_retry_api_key.pem
+          chmod 600 ~/.oci/oracle_retry_api_key.pem
+
+          cat > ~/.oci/config <<EOF
+          [DEFAULT]
+          user=${OCI_USER_OCID}
+          fingerprint=${OCI_FINGERPRINT}
+          key_file=/home/runner/.oci/oracle_retry_api_key.pem
+          tenancy=${OCI_TENANCY_OCID}
+          region=${OCI_REGION}
+          EOF
+          chmod 600 ~/.oci/config
+
+          printf '%s\n' "$ORACLE_HUNT_CONFIG_JSON" > oracle_space_hunt.local.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          config_path = Path("oracle_space_hunt.local.json")
+          config = json.loads(config_path.read_text())
+          metadata = config.setdefault("launch", {}).setdefault("metadata", {})
+          ssh_public_key = metadata.pop("github_runner_ssh_public_key", "").strip()
+          if not ssh_public_key:
+              raise SystemExit("Missing launch.metadata.github_runner_ssh_public_key in ORACLE_HUNT_CONFIG_JSON")
+
+          ssh_path = Path("/home/runner/.ssh/oracle_bot_key.pub")
+          ssh_path.write_text(ssh_public_key + "\n")
+
+          config["launch"]["ssh_authorized_keys_file"] = str(ssh_path)
+          config.setdefault("artifacts", {})
+          config["artifacts"].pop("runtime_root", None)
+          config["artifacts"]["log_file"] = str(Path.cwd() / "oracle_retry.log")
+          config["artifacts"]["state_file"] = str(Path.cwd() / "oracle_retry_state.json")
+          config["artifacts"]["lock_file"] = str(Path.cwd() / "oracle_retry.lock")
+
+          config_path.write_text(json.dumps(config, indent=2) + "\n")
+          PY
+
+      - name: Run one Oracle hunt attempt
+        id: hunt
+        shell: bash
+        run: |
+          set +e
+          python oracle_free_tier_retry_launch.py --config oracle_space_hunt.local.json --once
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ]; then
+            echo "status=secured_or_already_exists" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" -eq 5 ]; then
+            echo "status=capacity_unavailable" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "status=hard_failure" >> "$GITHUB_OUTPUT"
+          exit "$code"
+
+      - name: Upload retry artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oracle-space-hunt-${{ github.run_id }}
+          path: |
+            oracle_retry.log
+            oracle_retry_state.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Write workflow summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Oracle Space Hunt"
+            echo
+            echo "- Result: \`${{ steps.hunt.outputs.status || 'unknown' }}\`"
+            echo "- Exit code: \`${{ steps.hunt.outputs.exit_code || 'n/a' }}\`"
+            echo "- Schedule: \`7,37 * * * *\`"
+          } >> "$GITHUB_STEP_SUMMARY"

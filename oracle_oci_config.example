@@ -1,0 +1,6 @@
+[DEFAULT]
+user=ocid1.user.oc1..replace-me
+fingerprint=replace-me
+key_file=/Users/greystone/.oci/oracle_retry_api_key.pem
+tenancy=ocid1.tenancy.oc1..replace-me
+region=af-johannesburg-1
