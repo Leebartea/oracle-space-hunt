@@ -270,9 +270,9 @@
       document.getElementById("detail-line").textContent = formatValue(status.last_message, "No status message yet.");
 
       document.getElementById("primary-target").textContent = `${formatValue(status.primary_ocpus)} OCPU / ${formatValue(status.primary_memory_in_gbs)} GB`;
-      document.getElementById("fallback-target").textContent = status.fallback_enabled
-        ? `${formatValue(status.fallback_ocpus)} OCPU / ${formatValue(status.fallback_memory_in_gbs)} GB`
-        : "Disabled";
+      document.getElementById("fallback-target").textContent = (status.fallback_ocpus && status.fallback_memory_in_gbs)
+        ? `${formatValue(status.fallback_ocpus)} OCPU / ${formatValue(status.fallback_memory_in_gbs)} GB${status.fallback_enabled ? "" : " (manual only)"}`
+        : "Unavailable";
       document.getElementById("selected-profile").textContent = formatValue(status.selected_profile, "primary");
       document.getElementById("schedule-label").textContent = `Every hour at :${(status.schedule_minutes || [7, 37]).join(" and :")}`;
       document.getElementById("last-run-finished").textContent = formatDate(status.last_finished_at);

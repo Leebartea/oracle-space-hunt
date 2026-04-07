@@ -65,6 +65,7 @@ After adding secrets, you can trigger the workflow manually from the Actions tab
 - `Run workflow`
 - choose `primary` for the normal `2 / 12 GB` hunt
 - choose `fallback` for a one-off `1 / 6 GB` hunt if you want to test the smaller target manually
+- if your secret config does not already include fallback values, the hosted workflow now defaults that manual fallback profile to `1 / 6`
 
 ## Monitoring Links
 

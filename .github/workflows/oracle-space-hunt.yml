@@ -91,15 +91,19 @@ jobs:
           config["artifacts"]["lock_file"] = str(Path.cwd() / "oracle_retry.lock")
 
           selected_profile = os.environ.get("RUN_PROFILE", "primary").strip().lower()
-          fallback = (config.get("retry") or {}).get("fallback") or {}
+          retry_cfg = config.setdefault("retry", {})
+          fallback = retry_cfg.get("fallback") or {}
+          fallback_ocpus = fallback.get("ocpus") or fallback.get("fallback_ocpus") or 1
+          fallback_memory = fallback.get("memory_in_gbs") or fallback.get("fallback_memory_in_gbs") or 6
+          retry_cfg["fallback"] = {
+              "enabled": bool(fallback.get("enabled")),
+              "ocpus": fallback_ocpus,
+              "memory_in_gbs": fallback_memory,
+          }
           if selected_profile == "fallback":
-              fallback_ocpus = fallback.get("ocpus")
-              fallback_memory = fallback.get("memory_in_gbs")
-              if not fallback_ocpus or not fallback_memory:
-                  raise SystemExit("Fallback profile was requested, but fallback values are not configured.")
               config["launch"]["ocpus"] = fallback_ocpus
               config["launch"]["memory_in_gbs"] = fallback_memory
-              config.setdefault("retry", {})["fallback"] = {
+              retry_cfg["fallback"] = {
                   "enabled": False,
                   "ocpus": fallback_ocpus,
                   "memory_in_gbs": fallback_memory,
@@ -211,10 +215,10 @@ jobs:
               "primary_ocpus": config["launch"].get("ocpus"),
               "primary_memory_in_gbs": config["launch"].get("memory_in_gbs"),
               "fallback_enabled": bool((config.get("retry") or {}).get("fallback", {}).get("enabled")),
-              "fallback_ocpus": (config.get("retry") or {}).get("fallback", {}).get("ocpus"),
-              "fallback_memory_in_gbs": (config.get("retry") or {}).get("fallback", {}).get("memory_in_gbs"),
+              "fallback_ocpus": (config.get("retry") or {}).get("fallback", {}).get("ocpus") or 1,
+              "fallback_memory_in_gbs": (config.get("retry") or {}).get("fallback", {}).get("memory_in_gbs") or 6,
               "schedule_minutes": [7, 37],
-              "schedule_note": "GitHub-hosted hunter schedule at minute 7 and 37 each hour. The dashboard is monitor-only, but the workflow page can trigger a one-off fallback run.",
+              "schedule_note": "GitHub-hosted hunter schedule starts at minute 7 and 37 each hour. The next run is based on those fixed start times, not 30 minutes after the last run finishes. The dashboard is monitor-only, but the workflow page can trigger a one-off fallback run.",
               "log_tail": Path("oracle_retry.log").read_text().splitlines()[-16:] if Path("oracle_retry.log").exists() else [],
           }
           Path("site/status.json").write_text(json.dumps(payload, indent=2) + "\n")
