@@ -218,7 +218,7 @@ jobs:
               "fallback_ocpus": (config.get("retry") or {}).get("fallback", {}).get("ocpus") or 1,
               "fallback_memory_in_gbs": (config.get("retry") or {}).get("fallback", {}).get("memory_in_gbs") or 6,
               "schedule_minutes": [7, 37],
-              "schedule_note": "GitHub-hosted hunter schedule starts at minute 7 and 37 each hour. The next run is based on those fixed start times, not 30 minutes after the last run finishes. The dashboard is monitor-only, but the workflow page can trigger a one-off fallback run.",
+              "schedule_note": "GitHub-hosted hunter targets minute :07 and :37 of every hour. GitHub scheduled workflows are best-effort, so runs can be delayed a few minutes or occasionally dropped. The next run shown here is the next expected slot, not a guarantee. The dashboard is monitor-only, but the workflow page can trigger a one-off fallback run.",
               "log_tail": Path("oracle_retry.log").read_text().splitlines()[-16:] if Path("oracle_retry.log").exists() else [],
           }
           Path("site/status.json").write_text(json.dumps(payload, indent=2) + "\n")

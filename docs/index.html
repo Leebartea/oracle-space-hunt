@@ -292,7 +292,7 @@
         ? `${formatValue(status.fallback_ocpus)} OCPU / ${formatValue(status.fallback_memory_in_gbs)} GB${status.fallback_enabled ? "" : " (manual only)"}`
         : "Unavailable";
       document.getElementById("selected-profile").textContent = formatValue(status.selected_profile, "primary");
-      document.getElementById("schedule-label").textContent = `Every hour at :${(status.schedule_minutes || [7, 37]).join(" and :")}`;
+      document.getElementById("schedule-label").textContent = `At minute :${(status.schedule_minutes || [7, 37]).join(" and :")} of every hour`;
       document.getElementById("last-run-finished").textContent = formatDate(status.last_finished_at);
       document.getElementById("schedule-note").textContent = status.schedule_note || "This page refreshes automatically. Times are rendered in your browser’s local timezone for readability.";
 
