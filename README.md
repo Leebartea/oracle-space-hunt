@@ -2,6 +2,8 @@
 
 Minimal dedicated GitHub Actions repo for safely hunting Oracle Always Free A1 capacity.
 
+[![Oracle Space Hunt](https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml/badge.svg)](https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml)
+
 This repo only contains:
 
 - the Oracle retry script
@@ -62,7 +64,15 @@ After adding secrets, you can trigger the workflow manually from the Actions tab
 - `Oracle Space Hunt`
 - `Run workflow`
 
+## Monitoring Links
+
+- Repo: `https://github.com/Leebartea/oracle-space-hunt`
+- Actions UI: `https://github.com/Leebartea/oracle-space-hunt/actions`
+- Workflow page: `https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml`
+- Latest successful validation run: `https://github.com/Leebartea/oracle-space-hunt/actions/runs/24071571530`
+
+If you are using the GitHub-hosted hunter, you do **not** need to keep the local Mac scheduler running. The GitHub workflow is the active Oracle hunter.
+
 ## Schedule
 
 The workflow is scheduled at minute `7` and `37` every hour to avoid top-of-hour GitHub schedule congestion.
-
