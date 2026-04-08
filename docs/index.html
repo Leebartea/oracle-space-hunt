@@ -303,7 +303,7 @@
       return parsed.toLocaleString();
     }
 
-    function renderRecentRuns(runs) {
+    function renderRecentRuns(runs, status) {
       const body = document.getElementById("runs-body");
       const items = Array.isArray(runs) ? runs : [];
       if (!items.length) {
@@ -313,7 +313,14 @@
       body.innerHTML = items.map((run) => {
         const when = formatDate(run.created_at);
         const event = formatValue(run.event, "-");
-        const result = run.conclusion || run.status || "-";
+        let result = run.conclusion || run.status || "-";
+        const isLatestSnapshot =
+          Number(run.run_number) === Number(status.attempt_count) &&
+          run.status === "in_progress" &&
+          !!status.last_finished_at;
+        if (isLatestSnapshot) {
+          result = "completed (snapshot)";
+        }
         const runNumber = formatValue(run.run_number, "-");
         const url = formatValue(run.html_url, "#");
         return `
@@ -382,7 +389,7 @@
       document.getElementById("fallback-run-link").href = formatValue(status.workflow_url, "https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml");
 
       document.getElementById("log-box").textContent = (status.log_tail || []).join("\n") || "No log lines yet.";
-      renderRecentRuns(status.recent_runs || []);
+      renderRecentRuns(status.recent_runs || [], status);
     }
 
     async function refresh() {
