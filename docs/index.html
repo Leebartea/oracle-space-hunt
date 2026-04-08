@@ -172,6 +172,29 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    td a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
     .note {
       margin-top: 12px;
       padding: 10px 12px;
@@ -247,6 +270,25 @@
       </div>
       <pre id="log-box">Loading…</pre>
     </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>Recent Runs</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Event</th>
+            <th>Result</th>
+            <th>Run</th>
+          </tr>
+        </thead>
+        <tbody id="runs-body">
+          <tr><td colspan="4" class="muted">Loading recent runs…</td></tr>
+        </tbody>
+      </table>
+    </section>
   </div>
 
   <script>
@@ -259,6 +301,30 @@
       const parsed = new Date(value);
       if (Number.isNaN(parsed.getTime())) return value;
       return parsed.toLocaleString();
+    }
+
+    function renderRecentRuns(runs) {
+      const body = document.getElementById("runs-body");
+      const items = Array.isArray(runs) ? runs : [];
+      if (!items.length) {
+        body.innerHTML = `<tr><td colspan="4" class="muted">No recent run history available yet.</td></tr>`;
+        return;
+      }
+      body.innerHTML = items.map((run) => {
+        const when = formatDate(run.created_at);
+        const event = formatValue(run.event, "-");
+        const result = run.conclusion || run.status || "-";
+        const runNumber = formatValue(run.run_number, "-");
+        const url = formatValue(run.html_url, "#");
+        return `
+          <tr>
+            <td>${when}</td>
+            <td>${event}</td>
+            <td>${result}</td>
+            <td><a href="${url}" target="_blank" rel="noreferrer">#${runNumber}</a></td>
+          </tr>
+        `;
+      }).join("");
     }
 
     function computeNextRun(scheduleMinutes) {
@@ -316,6 +382,7 @@
       document.getElementById("fallback-run-link").href = formatValue(status.workflow_url, "https://github.com/Leebartea/oracle-space-hunt/actions/workflows/oracle-space-hunt.yml");
 
       document.getElementById("log-box").textContent = (status.log_tail || []).join("\n") || "No log lines yet.";
+      renderRecentRuns(status.recent_runs || []);
     }
 
     async function refresh() {

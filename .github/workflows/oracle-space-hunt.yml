@@ -200,6 +200,7 @@ jobs:
         if: always()
         shell: bash
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           PRECHECK_SECURED: ${{ steps.precheck.outputs.secured || 'false' }}
           HUNT_STATUS: ${{ steps.hunt.outputs.status || 'unknown' }}
           HUNT_EXIT_CODE: ${{ steps.hunt.outputs.exit_code || 'n/a' }}
@@ -228,6 +229,43 @@ jobs:
               except ValueError:
                   return text
 
+          def fetch_recent_runs(repo, token, limit=8):
+              import urllib.request
+              import urllib.parse
+
+              if not token:
+                  return []
+              base = f"https://api.github.com/repos/{repo}/actions/workflows/oracle-space-hunt.yml/runs"
+              query = urllib.parse.urlencode({"per_page": limit})
+              req = urllib.request.Request(
+                  f"{base}?{query}",
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {token}",
+                      "User-Agent": "oracle-space-hunt",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as resp:
+                      payload = json.load(resp)
+              except Exception:
+                  return []
+              runs = []
+              for item in payload.get("workflow_runs", []):
+                  runs.append(
+                      {
+                          "id": item.get("id"),
+                          "event": item.get("event"),
+                          "status": item.get("status"),
+                          "conclusion": item.get("conclusion"),
+                          "run_number": item.get("run_number"),
+                          "created_at": item.get("created_at"),
+                          "updated_at": item.get("updated_at"),
+                          "html_url": item.get("html_url"),
+                      }
+                  )
+              return runs
+
           config_file = Path("oracle_space_hunt.local.json")
           config = json.loads(config_file.read_text()) if config_file.exists() else {}
           state_path = Path("oracle_retry_state.json")
@@ -235,6 +273,7 @@ jobs:
           previous_path = Path("previous_status.json")
           previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
           secured_previously = os.environ.get("PRECHECK_SECURED", "false").lower() == "true"
+          recent_runs = fetch_recent_runs(os.environ["GITHUB_REPOSITORY"], os.environ.get("GITHUB_TOKEN", ""))
 
           if secured_previously:
               preserved_attempts = previous.get("attempt_count")
@@ -253,6 +292,7 @@ jobs:
                   "schedule_minutes": [7, 22, 37, 52],
                   "schedule_note": "Capacity was already secured previously, so scheduled GitHub runs now exit early before checking Oracle again. The hunter targets minute :07, :22, :37 and :52 of every hour, but GitHub scheduled workflows are still best-effort, so the wake-up itself may drift.",
                   "log_tail": (previous.get("log_tail") or [])[-15:] + ["[oracle-retry] Capacity already secured previously; skipped new Oracle check on this run."],
+                  "recent_runs": recent_runs or previous.get("recent_runs") or [],
                   "secured": True,
               }
           else:
@@ -287,6 +327,7 @@ jobs:
                   "schedule_minutes": [7, 22, 37, 52],
                   "schedule_note": "GitHub-hosted hunter targets minute :07, :22, :37 and :52 of every hour. GitHub scheduled workflows are best-effort, so runs can be delayed a few minutes or occasionally dropped. The next run shown here is the next expected slot, not a guarantee. The dashboard is monitor-only, but the workflow page can trigger a one-off fallback run.",
                   "log_tail": Path("oracle_retry.log").read_text().splitlines()[-16:] if Path("oracle_retry.log").exists() else [],
+                  "recent_runs": recent_runs,
               }
           Path("site/status.json").write_text(json.dumps(payload, indent=2) + "\n")
           PY

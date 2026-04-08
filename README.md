@@ -78,6 +78,8 @@ After adding secrets, you can trigger the workflow manually from the Actions tab
 
 For future handling commands and stop/start procedures, see [OPERATIONS_GUIDE.md](./OPERATIONS_GUIDE.md).
 
+For a later paid-host fallback option, see [VULTR_FALLBACK_GUIDE.md](./VULTR_FALLBACK_GUIDE.md).
+
 If you are using the GitHub-hosted hunter, you do **not** need to keep the local Mac scheduler running. The GitHub workflow is the active Oracle hunter.
 
 ## Schedule
