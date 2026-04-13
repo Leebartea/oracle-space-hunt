@@ -16,6 +16,8 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 
 DEFAULT_INTERVAL_SECONDS = 1800
@@ -31,6 +33,8 @@ DEFAULT_STATE_PATH = PROJECT_ROOT / "oracle_retry_state.json"
 DEFAULT_LOCK_PATH = PROJECT_ROOT / "oracle_retry.lock"
 SAFE_RETRY_CATEGORIES = {"capacity", "throttled", "network"}
 RETRYABLE_EXIT_CODES = {3, 4, 5, 6, 8, 9}
+DIGEST_INTERVAL = 50
+HEARTBEAT_GAP_THRESHOLD_SECONDS = 15 * 60
 
 
 def _now(ts: Optional[float] = None) -> str:
@@ -118,6 +122,134 @@ def classify_oci_error(message: str) -> str:
     if any(token in text for token in ("invalidparameter", "missingparameter", "bad request", "validation", "subnet", "image", "shape")):
         return "config"
     return "other"
+
+
+# ── Telegram Alerts ──────────────────────────────────────────────────────────
+
+def _load_env_file(env_file: Optional[Path] = None) -> None:
+    """Best-effort .env loading for Telegram credentials."""
+    targets: List[Path] = []
+    if env_file:
+        targets.append(env_file)
+    targets.extend([PROJECT_ROOT / ".env", PROJECT_ROOT / "dockerTrading" / ".env"])
+    for target in targets:
+        if not target.exists():
+            continue
+        try:
+            for line in target.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip().strip("'\"")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+        except OSError:
+            pass
+        return
+
+
+def _send_telegram(message: str) -> bool:
+    """Send a Telegram message via Bot API. Returns True on success. Never raises."""
+    try:
+        token = os.environ.get("TELEGRAM_TOKEN", "").strip()
+        chat_id = (
+            os.environ.get("TELEGRAM_OPERATOR_CHAT_ID", "")
+            or os.environ.get("TELEGRAM_CHAT_ID", "")
+        ).strip()
+        if not token or not chat_id:
+            return False
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = json.dumps({
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }).encode("utf-8")
+        req = Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urlopen(req, timeout=15) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def _alert_success(profile: Dict[str, Any], instance_id: str, lifecycle: str) -> None:
+    _send_telegram(
+        "\U0001f7e2 <b>Oracle Instance Secured</b>\n\n"
+        f"Shape: {profile.get('label', 'unknown')} "
+        f"({profile.get('ocpus', '?')}/{profile.get('memory_in_gbs', '?')} GB)\n"
+        f"ID: <code>{instance_id}</code>\n"
+        f"State: {lifecycle}\n"
+        f"Time: {_now()}"
+    )
+
+
+def _alert_down(error: str) -> None:
+    _send_telegram(
+        "\U0001f534 <b>Oracle Hunter Down</b>\n\n"
+        f"Error: {error[:500]}\n"
+        f"Time: {_now()}"
+    )
+
+
+def _alert_digest(attempt_count: int, last_result: str, last_message: str) -> None:
+    _send_telegram(
+        "\U0001f4ca <b>Oracle Hunt Digest</b>\n\n"
+        f"Attempts: {attempt_count}\n"
+        f"Last result: {last_result}\n"
+        f"Detail: {last_message[:300]}\n"
+        f"Time: {_now()}"
+    )
+
+
+def _alert_auth_error(message: str) -> None:
+    _send_telegram(
+        "\u26a0\ufe0f <b>Oracle Hunter Auth/Config Error</b>\n\n"
+        f"{message[:500]}\n"
+        f"Time: {_now()}"
+    )
+
+
+def _alert_gap(gap_seconds: float) -> None:
+    _send_telegram(
+        "\u23f0 <b>Oracle Hunter Gap Alert</b>\n\n"
+        f"No heartbeat update in {gap_seconds / 60:.0f} minutes.\n"
+        f"Time: {_now()}"
+    )
+
+
+# ── Heartbeat ────────────────────────────────────────────────────────────────
+
+def _heartbeat_path(config: Dict[str, Any]) -> Path:
+    artifacts = config.get("artifacts") or {}
+    custom = artifacts.get("runtime_root")
+    runtime_root = _expand_path(custom) if custom else DEFAULT_RUNTIME_ROOT
+    return runtime_root / "heartbeat.log"
+
+
+def _update_heartbeat(config: Dict[str, Any], attempt: int, result: str) -> None:
+    try:
+        hb_path = _heartbeat_path(config)
+        hb_path.parent.mkdir(parents=True, exist_ok=True)
+        hb_path.write_text(
+            f"{_now()} attempt={attempt} result={result}\n",
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+
+
+def _check_heartbeat_gap(config: Dict[str, Any]) -> Optional[float]:
+    """Return seconds since last heartbeat, or None if no gap."""
+    try:
+        hb_path = _heartbeat_path(config)
+        if not hb_path.exists():
+            return None
+        age = time.time() - hb_path.stat().st_mtime
+        return age if age > HEARTBEAT_GAP_THRESHOLD_SECONDS else None
+    except OSError:
+        return None
 
 
 def _build_oci_base_command(profile: Optional[str], region: Optional[str]) -> List[str]:
@@ -1482,6 +1614,8 @@ def run_single_attempt(
             message = f"Existing-instance check failed ({category}): {existing_err}"
             _finish_state(state_path, config, exit_code=exit_code, result=f"{category}_error", message=message)
             log(message)
+            if category in {"auth", "config"}:
+                _alert_auth_error(message)
             return exit_code
 
         if existing:
@@ -1499,6 +1633,7 @@ def run_single_attempt(
                 lifecycle=str(lifecycle),
             )
             log(message)
+            _alert_success({"label": "existing", "ocpus": "?", "memory_in_gbs": "?"}, str(instance_id), str(lifecycle))
             return 0
 
         profiles = _build_profiles(config)
@@ -1519,6 +1654,8 @@ def run_single_attempt(
                     profile=profile,
                 )
                 log(message)
+                if category in {"auth", "config"}:
+                    _alert_auth_error(message)
                 return exit_code
 
             report = interpret_capacity_report(report_payload, requested_count=requested_count)
@@ -1565,6 +1702,8 @@ def run_single_attempt(
                     lifecycle=str(lifecycle),
                 )
                 log(message)
+                if not dry_run:
+                    _alert_success(profile, str(instance_id), str(lifecycle))
                 return 0
 
             category = classify_oci_error(launch_err)
@@ -1582,6 +1721,8 @@ def run_single_attempt(
                 fault_domain=str(picked_fault_domain) if picked_fault_domain else None,
             )
             log(message)
+            if category in {"auth", "config"}:
+                _alert_auth_error(message)
             return exit_code
 
         capacity_status = (last_report or {}).get("status") or "UNAVAILABLE"
@@ -1646,6 +1787,7 @@ def main() -> int:
     parser.add_argument("--install-schedule", action="store_true", help="Install the 30-minute retry schedule")
     parser.add_argument("--remove-schedule", action="store_true", help="Remove the retry schedule")
     parser.add_argument("--status-json", action="store_true", help="Print current UI/scheduler status as JSON")
+    parser.add_argument("--env-file", default=None, help="Path to .env file for Telegram credentials")
     args = parser.parse_args()
 
     config_path = _expand_path(args.config)
@@ -1653,6 +1795,8 @@ def main() -> int:
         raise SystemExit(f"Config file not found: {args.config}")
     config = _read_json_file(config_path)
     _require_fields(config)
+
+    _load_env_file(_expand_path(args.env_file) if args.env_file else None)
 
     log_path = _artifact_path(config, "log_file", DEFAULT_LOG_PATH)
 
@@ -1692,6 +1836,11 @@ def main() -> int:
     attempt = 0
     while True:
         attempt += 1
+
+        gap = _check_heartbeat_gap(config)
+        if gap is not None:
+            _alert_gap(gap)
+
         exit_code = run_single_attempt(
             config,
             config_path=config_path,
@@ -1699,9 +1848,17 @@ def main() -> int:
             attempt=attempt,
             run_mode="once" if args.once else "loop",
         )
+
+        _update_heartbeat(config, attempt, "success" if exit_code == 0 else f"exit_{exit_code}")
+
         if exit_code == 0:
             _remove_scheduler_on_success(config_path, config)
             return 0
+
+        if attempt % DIGEST_INTERVAL == 0:
+            state_path = _artifact_path(config, "state_file", DEFAULT_STATE_PATH)
+            state = _load_state(state_path, config)
+            _alert_digest(attempt, str(state.get("last_result", "")), str(state.get("last_message", "")))
 
         if args.once:
             return exit_code
@@ -1724,3 +1881,9 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         log("interrupted")
         raise SystemExit(130)
+    except SystemExit:
+        raise
+    except Exception as exc:
+        _alert_down(str(exc))
+        log(f"unhandled error: {exc}")
+        raise SystemExit(2)
