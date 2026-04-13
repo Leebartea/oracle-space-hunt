@@ -34,7 +34,7 @@ DEFAULT_LOCK_PATH = PROJECT_ROOT / "oracle_retry.lock"
 SAFE_RETRY_CATEGORIES = {"capacity", "throttled", "network"}
 RETRYABLE_EXIT_CODES = {3, 4, 5, 6, 8, 9}
 DIGEST_INTERVAL = 50
-HEARTBEAT_GAP_THRESHOLD_SECONDS = 15 * 60
+HEARTBEAT_GAP_THRESHOLD_SECONDS = 10 * 60
 
 
 def _now(ts: Optional[float] = None) -> str:
@@ -1826,7 +1826,7 @@ def main() -> int:
     )
     max_attempts = int(args.max_attempts if args.max_attempts is not None else retry_cfg.get("max_attempts", 0) or 0)
 
-    if interval_seconds < 900:
+    if not args.once and interval_seconds < 900:
         raise SystemExit("Refusing to run with interval_seconds < 900. Keep retries conservative.")
 
     log("safe mode enabled: official OCI CLI only, one launch path per run, long backoff, no browser automation")
