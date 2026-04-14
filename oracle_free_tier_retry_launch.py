@@ -1855,10 +1855,17 @@ def main() -> int:
             _remove_scheduler_on_success(config_path, config)
             return 0
 
-        if attempt % DIGEST_INTERVAL == 0:
-            state_path = _artifact_path(config, "state_file", DEFAULT_STATE_PATH)
-            state = _load_state(state_path, config)
-            _alert_digest(attempt, str(state.get("last_result", "")), str(state.get("last_message", "")))
+        # Digest uses cumulative attempt_count from persisted state so --once mode
+        # (where local `attempt` always resets to 1) still fires the digest alert.
+        state_path = _artifact_path(config, "state_file", DEFAULT_STATE_PATH)
+        state = _load_state(state_path, config)
+        cumulative_attempts = _safe_int(state.get("attempt_count"), 0)
+        if cumulative_attempts > 0 and cumulative_attempts % DIGEST_INTERVAL == 0:
+            _alert_digest(
+                cumulative_attempts,
+                str(state.get("last_result", "")),
+                str(state.get("last_message", "")),
+            )
 
         if args.once:
             return exit_code
