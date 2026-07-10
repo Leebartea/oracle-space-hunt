@@ -6,6 +6,7 @@ import json
 import os
 import plistlib
 import random
+import re
 import shlex
 import shutil
 import subprocess
@@ -33,6 +34,7 @@ DEFAULT_STATE_PATH = PROJECT_ROOT / "oracle_retry_state.json"
 DEFAULT_LOCK_PATH = PROJECT_ROOT / "oracle_retry.lock"
 SAFE_RETRY_CATEGORIES = {"capacity", "throttled", "network"}
 RETRYABLE_EXIT_CODES = {3, 4, 5, 6, 8, 9}
+DEFAULT_FAULT_DOMAINS = ["FAULT-DOMAIN-1", "FAULT-DOMAIN-2", "FAULT-DOMAIN-3"]
 DIGEST_INTERVAL = 50
 HEARTBEAT_GAP_THRESHOLD_SECONDS = 10 * 60
 
@@ -97,7 +99,9 @@ def classify_oci_error(message: str) -> str:
     text = str(message or "").lower()
     if any(token in text for token in ("out of host capacity", "out_of_host_capacity", "outofhostcapacity")):
         return "capacity"
-    if any(token in text for token in ("too many requests", "toomanyrequests", "throttl", "rate limit", "429")):
+    if any(token in text for token in ("too many requests", "toomanyrequests", "throttl", "rate limit")):
+        return "throttled"
+    if re.search(r"(?<![a-z0-9])429(?![a-z0-9])", text):
         return "throttled"
     if any(
         token in text
@@ -375,14 +379,8 @@ def _build_profiles(config: Dict[str, Any]) -> List[Dict[str, Any]]:
     return profiles
 
 
-def create_capacity_report(
-    config: Dict[str, Any],
-    launch_cfg: Dict[str, Any],
-    *,
-    dry_run: bool = False,
-) -> Tuple[bool, Dict[str, Any], Optional[str]]:
-    tenancy = config["tenancy"]
-    shape_payload: Dict[str, Any] = {
+def _build_shape_availability_entries(launch_cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+    base_entry = {
         "instanceShape": launch_cfg["shape"],
         "instanceShapeConfig": {
             "ocpus": _safe_float(launch_cfg["ocpus"]),
@@ -390,9 +388,18 @@ def create_capacity_report(
         },
     }
     if launch_cfg.get("fault_domain"):
-        shape_payload["faultDomain"] = launch_cfg["fault_domain"]
+        return [{**base_entry, "faultDomain": launch_cfg["fault_domain"]}]
+    return [{**base_entry, "faultDomain": fd} for fd in DEFAULT_FAULT_DOMAINS]
 
-    shape_file = _write_temp_json([shape_payload])
+
+def create_capacity_report(
+    config: Dict[str, Any],
+    launch_cfg: Dict[str, Any],
+    *,
+    dry_run: bool = False,
+) -> Tuple[bool, Dict[str, Any], Optional[str]]:
+    tenancy = config["tenancy"]
+    shape_file = _write_temp_json(_build_shape_availability_entries(launch_cfg))
     try:
         cmd = _build_oci_base_command(tenancy.get("profile"), tenancy.get("region"))
         cmd.extend(
